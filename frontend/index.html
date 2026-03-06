@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Negentropy Engine Console</title>
+  <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">NEGENTROPY ENGINE</p>
+        <h1>运行层与分析层控制台</h1>
+        <p class="hero-copy">一个页面里跑通事件、节点、周复盘、快照、规则生成和建议审批。</p>
+      </div>
+      <div class="hero-panel">
+        <div class="metric">
+          <span>Build</span>
+          <strong id="health-build">-</strong>
+        </div>
+        <div class="metric">
+          <span>数据库</span>
+          <strong id="health-db">-</strong>
+        </div>
+        <div class="metric">
+          <span>调度</span>
+          <strong id="health-scheduler">-</strong>
+        </div>
+      </div>
+    </header>
+
+    <main class="grid">
+      <section class="card card-wide">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">V1 / Events</p>
+            <h2>自然语言事件</h2>
+          </div>
+          <button id="refresh-all" class="ghost">刷新全部</button>
+        </div>
+        <div class="two-col">
+          <form id="parse-form" class="stack">
+            <label>
+              <span>自然语言输入</span>
+              <textarea id="nl-text" rows="5" placeholder="例如：今天上午连续专注学习 3 小时，思维状态不错，但有点疲惫。"></textarea>
+            </label>
+            <label>
+              <span>时间提示（可选）</span>
+              <input id="nl-occurred-at" type="text" placeholder="2026-03-06T09:30:00+08:00">
+            </label>
+            <div class="actions">
+              <button type="submit">解析事件</button>
+              <button type="button" id="create-direct-event" class="ghost">直接写入示例事件</button>
+            </div>
+          </form>
+          <div class="stack">
+            <div class="subcard">
+              <div class="subcard-head">
+                <h3>结构化草稿</h3>
+                <button id="confirm-draft" class="ghost" disabled>确认写库</button>
+              </div>
+              <textarea id="draft-json" rows="12" spellcheck="false" placeholder="解析结果将显示在这里"></textarea>
+            </div>
+            <div class="subcard">
+              <h3>最近事件</h3>
+              <div id="events-list" class="list"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">V1 / Key Nodes</p>
+            <h2>节点进度</h2>
+          </div>
+        </div>
+        <form id="key-node-form" class="stack compact">
+          <label>
+            <span>节点</span>
+            <select id="key-node-id"></select>
+          </label>
+          <label>
+            <span>进度</span>
+            <input id="key-node-progress" type="number" min="0" max="1" step="0.05" placeholder="0.20">
+          </label>
+          <label>
+            <span>来源事件 ID（可选）</span>
+            <input id="key-node-event-id" type="number" min="1" placeholder="1">
+          </label>
+          <label>
+            <span>原因</span>
+            <input id="key-node-reason" type="text" placeholder="推进了研究节点">
+          </label>
+          <button type="submit">更新节点</button>
+        </form>
+        <div id="key-nodes-list" class="list"></div>
+      </section>
+
+      <section class="card">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">V1 / Review & Snapshot</p>
+            <h2>周复盘与快照</h2>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="generate-review">生成周复盘</button>
+          <button id="generate-snapshot" class="ghost">生成快照</button>
+        </div>
+        <div class="subcard">
+          <h3>最新周复盘</h3>
+          <pre id="weekly-review-output" class="mono-block">暂无数据</pre>
+        </div>
+        <div class="subcard">
+          <h3>最新快照</h3>
+          <pre id="snapshot-output" class="mono-block">暂无数据</pre>
+        </div>
+      </section>
+
+      <section class="card card-wide">
+        <div class="section-head">
+          <div>
+            <p class="section-kicker">V1.5 / Analytics</p>
+            <h2>规则与审批</h2>
+          </div>
+          <div class="actions">
+            <button id="run-analytics">运行分析</button>
+            <button id="refresh-analytics" class="ghost">刷新分析</button>
+          </div>
+        </div>
+        <div class="analytics-summary">
+          <div class="subcard">
+            <h3>最新批次</h3>
+            <pre id="analytics-run-output" class="mono-block">暂无批次</pre>
+          </div>
+          <div class="subcard">
+            <h3>调度状态</h3>
+            <pre id="scheduler-output" class="mono-block">暂无数据</pre>
+          </div>
+        </div>
+        <div class="three-col">
+          <div class="subcard">
+            <h3>Energy Rules</h3>
+            <div id="energy-rules-list" class="list"></div>
+          </div>
+          <div class="subcard">
+            <h3>Progress Rules</h3>
+            <div id="progress-rules-list" class="list"></div>
+          </div>
+          <div class="subcard">
+            <h3>待审批建议</h3>
+            <div id="suggestions-list" class="list"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <aside id="toast" class="toast hidden"></aside>
+  </div>
+
+  <script src="/assets/app.js"></script>
+</body>
+</html>

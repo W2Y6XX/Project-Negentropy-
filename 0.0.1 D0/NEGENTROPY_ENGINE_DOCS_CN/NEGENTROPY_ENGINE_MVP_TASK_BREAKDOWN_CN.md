@@ -1,258 +1,217 @@
-# 负熵引擎 MVP 最小任务分割与验收标准
+# 负熵引擎 MVP 最小任务拆分与验收标准
 
 ## 0. 文档目标
 
-本文档把 D0 / MVP 的工程实现压缩成最小任务集，目标不是做“大而全系统”，而是尽快打通以下本地闭环：
+本文档将 D0 / MVP 压缩为最小可执行任务集。当前仓库的实现状态已经从纯 V1 推进到：
 
-> 初始化系统 -> 录入事件 -> 更新关键节点 / 能量状态 -> 生成周复盘 -> 生成快照
+- `T1-T6` 已完成
+- `V1.5-A1` 首轮分析层已完成
+- `T7` 已完成最小单页壳层版本
 
-默认约束：
+本文档的重点不再是“从零开始”，而是明确：
 
-- 只做本地 MVP
-- SQLite 是唯一运行时主数据源
-- 不做登录、同步、推荐、复杂 Agent 编排、预测建模
-- 前端只允许最小壳层，不允许膨胀成复杂产品
+- 哪些任务已经完成
+- 哪些任务是当前 MVP 剩余项
+- V1.5 首轮已经实现到什么程度
 
-## 0.1 当前首轮落地范围
-
-当前仓库首轮只实现 `T1-T2` 底座版：
-
-- `T1` 已收敛为工程骨架落盘
-- `T2` 已收敛为数据库 schema 初始化
-- `T3-T7` 保持为下一轮实现任务，不在本轮验收
-
-## 1. 拆分原则
-
-- 每个任务只交付一个可验证能力
-- 每个任务完成后都必须有可观察结果：文件、数据库记录、接口返回或页面行为
-- 任务之间按依赖顺序推进，避免前后端并行放大不确定性
-- 先打通后优化，验收以“能稳定跑通”优先，不以“设计完整”优先
-
-## 2. 最小任务分割
+## 1. 已完成任务
 
 ### T1. 工程骨架落盘
 
-目标：把 starter 工程骨架和 schema 包整理成可运行的目标仓库结构。
+已完成内容：
 
-范围：
-
-- 放置 `database/schema.sql`
-- 放置 `seed/init_self_model.json`
-- 放置 `backend/main.py`
-- 放置 `seed.py`
-- 放置 `requirements.txt`
-- 保持根目录 `README.md` 可作为开发入口
+- `database/schema.sql`
+- `seed/init_self_model.json`
+- `backend/main.py`
+- `seed.py`
+- `requirements.txt`
+- 根目录 `README.md`
 
 验收标准：
 
-- 仓库结构符合 README 中定义的目标目录结构
-- `pip install -r requirements.txt` 可执行且无缺失依赖
-- `uvicorn backend.main:app --reload` 能启动，不出现导入错误或路径错误
-- `http://127.0.0.1:8000/docs` 可打开
-- `GET /health` 返回 200
-- 本任务不引入任何非 D0 能力
+- `pip install -r requirements.txt` 可执行
+- `uvicorn backend.main:app --reload` 可启动
+- `/docs` 可访问
 
-### T2. 数据库初始化与底座重建
+### T2. 数据库初始化与 Seed 打通
 
-目标：让 schema 与底座脚本在一次冷启动中打通，并支持反复重建数据库。
+已完成内容：
 
-范围：
-
-- `schema.sql` 能创建 D0 所需表
-- `seed.py` 每次运行都会删除旧库并重建
-- `init_self_model.json` 在仓库中保留，但本轮不导入数据库
+- `python seed.py` 每次重建数据库
+- D0 基线导入成功
+- 核心业务表和关联表可用
 
 验收标准：
 
-- 删除旧的 `negentropy.db` 后，运行 `python seed.py` 可成功生成新库
-- 连续运行两次 `python seed.py` 都成功
-- 数据库至少存在以下核心表：
-  - `system_state`
-  - `channels`
-  - `traits`
-  - `skills`
-  - `key_nodes`
-  - `goals`
-  - `events`
-  - `weekly_reviews`
-  - `energy_pools`
-  - `snapshots`
-- `event_channels`、`event_key_nodes`、`event_skills` 三张关联表存在
-- 库中不写入任何 seed 数据
-- `init_self_model.json` 仅作为下一轮输入保留，不作为当前运行时数据源
+- 连续两次运行 `python seed.py` 均成功
+- `system_state`
+- `channels`
+- `traits`
+- `skills`
+- `key_nodes`
+- `goals`
+- `events`
+- `weekly_reviews`
+- `energy_pools`
+- `snapshots`
+
+以上核心表存在，且有 D0 基线数据
 
 ### T3. 事件录入与查询接口
 
-目标：完成 MVP 的第一步可操作输入，即事件录入。
+已完成内容：
 
-推荐最小接口：
-
-- `POST /events`
 - `GET /events`
-
-下一轮约束：
-
-- `POST /events` 需要兼容 starter 简版字段和正式 schema 字段
-
-推荐最小事件字段：
-
-- `title`
-- `description`
-- `occurred_at`
-- `body_delta`
-- `mind_delta`
-- `notes`
+- `POST /events`
+- `POST /events/parse`
+- `POST /events/confirm`
 
 验收标准：
 
-- `POST /events` 能成功写入至少 1 条事件
-- 写入后的事件能被 `GET /events` 查到，且按时间倒序返回
-- `body_delta`、`mind_delta` 的取值受 schema 约束，不允许越界写入
-- 事件记录至少包含时间、标题和 delta 信息
-- 当前任务只要求打通事件主表，不强制完成事件与 channels / key_nodes / skills 的多对多关联
+- 能写入事件并被查询到
+- `occurred_at` 统一归一化到 UTC
+- 自然语言事件先解析，再确认写库
 
 ### T4. 关键节点查询与更新接口
 
-目标：让 MVP 具备“从事件走向节点进度变化”的最小控制面。
-
-推荐最小接口：
+已完成内容：
 
 - `GET /key-nodes`
 - `PATCH /key-nodes/{id}`
 
-推荐最小可更新字段：
+当前新增：
 
-- `progress`
-- `status`
-- `notes`
+- `PATCH /key-nodes/{id}` 支持可选 `source_event_id`
+- `PATCH /key-nodes/{id}` 支持可选 `reason`
+- 进度变化会写入 `key_node_progress_logs`
 
 验收标准：
 
-- `GET /key-nodes` 能返回 seed 的关键节点列表
-- 至少能更新 1 个关键节点的 `progress` 或 `status`
-- `progress` 必须被限制在 `0 ~ 1`
-- 更新后再次查询，能看到值已持久化
-- 至少有 1 个关键节点能从 `0.0` 更新到大于 `0` 的进度
+- 能更新关键节点 `progress` / `status` / `notes`
+- `progress` 变化时会记录日志
+- 非法 `source_event_id` 返回 400
 
 ### T5. 周复盘生成
 
-目标：把事件、能量和关键节点变化汇总成可存档的 markdown 周复盘。
+已完成内容：
 
-推荐最小能力：
-
-- 提供一个“生成本周周复盘”的接口
-- 将结果写入 `weekly_reviews`
-- 返回 markdown 内容供页面展示
-
-周复盘最小输入：
-
-- 本周事件
-- 当前 body / mind 状态
-- 当前关键节点进度变化
+- `POST /weekly-review/generate`
+- `GET /weekly-review`
 
 验收标准：
 
-- 在至少存在 1 条事件的情况下，可以生成 1 份周复盘
-- 生成结果会落库到 `weekly_reviews`
-- 周复盘正文为 markdown，而不是 placeholder 文本
-- 周复盘至少包含以下信息：
-  - 周期范围
-  - 事件摘要
-  - body / mind 趋势摘要
-  - 关键节点进度摘要
-- 同一周重复生成时，不产生重复脏数据；应复用或覆盖同一周记录
+- 能生成非 placeholder 的 markdown 周复盘
+- 同一周重复生成时更新原记录，不插入重复脏数据
 
 ### T6. 快照生成
 
-目标：把当前系统状态固化为一个可追踪的 snapshot。
+已完成内容：
 
-推荐最小能力：
-
-- 提供一个“生成快照”的接口
-- 将结果写入 `snapshots`
-- 提供一个“读取最新快照”的接口或沿用现有读取路由
-
-快照最小内容：
-
-- `phase`
-- `body_level`
-- `mind_level`
-- 当前活跃 channels
-- 当前活跃 key nodes
-- 本次快照摘要
+- `POST /snapshot/generate`
+- `GET /snapshot`
 
 验收标准：
 
-- 在 seed 完成后，能够新增 1 条快照记录，而不是只读取 seed 自带快照
-- 新快照会落库到 `snapshots`
-- 查询最新快照时，能看到最新生成的记录
-- 快照内容至少包含当前 phase、body/mind level 和活跃节点摘要
-- 快照生成依赖数据库现状，不从 JSON 直接拼装
+- 能生成新的 snapshot 记录
+- 能读取最新 snapshot
+
+## 2. V1.5 首轮任务
+
+### V1.5-A1. 分析层最小闭环
+
+已完成内容：
+
+- `analytics_runs`
+- `energy_rules`
+- `progress_rules`
+- `analytics_suggestions`
+- `analytics_feedback`
+- `key_node_progress_logs`
+
+已完成接口：
+
+- `POST /analytics/run`
+- `GET /analytics/runs`
+- `GET /analytics/runs/{id}`
+- `GET /analytics/rules/energy`
+- `GET /analytics/rules/progress`
+- `GET /analytics/suggestions`
+- `POST /analytics/suggestions/{id}/review`
+- `GET /analytics/insights/latest`
+- `GET /analytics/scheduler/status`
+
+规则生成范围：
+
+- `energy_rules`：按 `event_type` 聚合 `body_delta` / `mind_delta`
+- `progress_rules`：按 `event_type + node_type` 聚合 `progress_delta`
+
+审批回流范围：
+
+- `approved` / `edited` 的建议会参与下一轮拟合
+- `rejected` 的建议不会进入均值拟合
+
+轻量调度范围：
+
+- 每日 02:00 跑最近 7 天分析
+- 每周一 03:00 跑最近 30 天分析
+- 可通过 `ANALYTICS_SCHEDULER_ENABLED=0` 关闭
+
+验收标准：
+
+- 空样本执行 `POST /analytics/run` 不报错
+- 有事件后能生成 `energy_rules`
+- 有绑定事件的节点进度日志后能生成 `progress_rules`
+- 能查询建议列表
+- 能审批建议
+- 下一轮分析能吸收审批结果
+
+## 3. 当前剩余任务
 
 ### T7. 最小前端壳层与联调
 
-目标：给 MVP 提供最小可操作界面，避免只能手工调接口。
+已完成内容：
 
-冻结页面范围：
+- 根路径 `/` 提供单页控制台
+- 页面可完成事件解析 / 确认写库
+- 页面可更新关键节点
+- 页面可生成周复盘和快照
+- 页面可运行 V1.5 分析并审批建议
 
-1. 今日记录
-2. 节点进度
-3. 周复盘
+当前剩余增强项：
 
-页面职责：
-
-- 今日记录：提交事件，查看最近事件
-- 节点进度：查看关键节点，修改进度 / 状态
-- 周复盘：生成并展示周复盘，同时展示最新 snapshot 摘要
+- 若需要更清晰的信息架构，再拆分为多页面
+- 若需要更强展示，再补规则趋势和历史批次对比
 
 验收标准：
 
-- 至少存在上述 3 个页面或 3 个明确视图
-- 不依赖登录、注册、权限系统
-- 不引入复杂前端框架状态管理或组件库膨胀
-- 用户可以不借助 Postman，仅通过页面完成一次完整最小闭环：
-  - 新建事件
-  - 更新一个关键节点
-  - 生成周复盘
-  - 查看最新快照摘要
+- 用户不借助 Postman 也能跑通一次完整闭环
+- 能查看 V1.5 最新规则和待审批建议
 
-## 3. 总体验收标准
+## 4. 当前总体验收标准
 
-只有同时满足以下条件，MVP 才算完成：
+当前本地版本可视为达到“V1 + V1.5 首轮可用”，当且仅当同时满足：
 
-1. 在空数据库前提下，`python seed.py` 能初始化系统
-2. 服务启动后，API 文档可访问
-3. 能录入至少 1 条事件
-4. 能更新至少 1 个关键节点进度
-5. 能生成 1 份非 placeholder 的周复盘 markdown
-6. 能生成 1 条新的 snapshot
-7. 用户能通过最小页面跑通一次闭环
+1. `python seed.py` 能初始化系统
+2. API 文档可访问
+3. 能写入事件
+4. 能更新关键节点并记录进度日志
+5. 能生成周复盘
+6. 能生成快照
+7. 能手动运行分析
+8. 能产出规则或建议
+9. 能审批建议并在下一轮分析中回流
+10. 能通过 `/` 页面完成最小联调
 
-建议用以下顺序做最终验收：
-
-1. 删除旧数据库
-2. 运行 `python seed.py`
-3. 启动 FastAPI
-4. 新建一条事件
-5. 更新一个关键节点
-6. 生成周复盘
-7. 生成快照
-8. 打开页面复核链路
-
-## 4. 不纳入本轮验收
-
-以下内容即使存在想法，也不算本轮 MVP 完成条件：
+## 5. 不纳入当前验收
 
 - 用户系统
 - 登录 / 注册
 - 云端同步 / 多端同步
 - 推荐系统
-- 自动人生规划
-- 复杂预测模型
-- 向量数据库
-- 多 Agent 协作编排
-- 漂亮但无必要的复杂前端
+- 黑箱预测模型
+- V2 自动策略执行
+- 复杂前端框架膨胀
 
 一句话约束：
 
-> 本轮不是做一个“看起来完整”的系统，而是做一个“真实可跑通的最小内核”。
+> 当前不是做“复杂智能系统”的阶段，而是把运行层和分析层都做成真实可验证、可迭代的本地闭环。

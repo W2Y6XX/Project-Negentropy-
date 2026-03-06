@@ -305,4 +305,113 @@ CREATE TABLE IF NOT EXISTS snapshots (
 CREATE INDEX IF NOT EXISTS idx_snapshots_snapshot_time
     ON snapshots(snapshot_time DESC);
 
+-- -----------------------------
+-- 10. V1.5 analytics runs
+-- -----------------------------
+CREATE TABLE IF NOT EXISTS analytics_runs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_type TEXT NOT NULL CHECK (run_type IN ('manual', 'scheduled_daily', 'scheduled_weekly')),
+    window_start TEXT NOT NULL,
+    window_end TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('running', 'completed', 'failed')),
+    rule_set_version TEXT NOT NULL,
+    summary TEXT,
+    started_at TEXT NOT NULL,
+    completed_at TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_analytics_runs_status
+    ON analytics_runs(status, id DESC);
+
+CREATE INDEX IF NOT EXISTS idx_analytics_runs_run_type
+    ON analytics_runs(run_type, id DESC);
+
+-- -----------------------------
+-- 11. V1.5 energy rules
+-- -----------------------------
+CREATE TABLE IF NOT EXISTS energy_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    analytics_run_id INTEGER NOT NULL REFERENCES analytics_runs(id) ON DELETE CASCADE,
+    event_type TEXT NOT NULL,
+    sample_count INTEGER NOT NULL CHECK (sample_count >= 0),
+    expected_body_delta REAL NOT NULL,
+    expected_mind_delta REAL NOT NULL,
+    confidence TEXT NOT NULL CHECK (confidence IN ('low', 'medium', 'high')),
+    evidence_notes TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_energy_rules_run_id
+    ON energy_rules(analytics_run_id, event_type);
+
+-- -----------------------------
+-- 12. V1.5 progress rules
+-- -----------------------------
+CREATE TABLE IF NOT EXISTS progress_rules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    analytics_run_id INTEGER NOT NULL REFERENCES analytics_runs(id) ON DELETE CASCADE,
+    event_type TEXT NOT NULL,
+    node_type TEXT NOT NULL CHECK (node_type IN ('spirit', 'vocation')),
+    sample_count INTEGER NOT NULL CHECK (sample_count >= 0),
+    expected_progress_delta REAL NOT NULL,
+    confidence TEXT NOT NULL CHECK (confidence IN ('low', 'medium', 'high')),
+    evidence_notes TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_progress_rules_run_id
+    ON progress_rules(analytics_run_id, event_type, node_type);
+
+-- -----------------------------
+-- 13. V1.5 suggestions
+-- -----------------------------
+CREATE TABLE IF NOT EXISTS analytics_suggestions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    analytics_run_id INTEGER NOT NULL REFERENCES analytics_runs(id) ON DELETE CASCADE,
+    rule_type TEXT NOT NULL CHECK (rule_type IN ('energy', 'progress')),
+    target_key TEXT NOT NULL,
+    suggested_payload_json TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'edited')),
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_analytics_suggestions_run_id
+    ON analytics_suggestions(analytics_run_id, status, id DESC);
+
+-- -----------------------------
+-- 14. V1.5 approval feedback
+-- -----------------------------
+CREATE TABLE IF NOT EXISTS analytics_feedback (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    suggestion_id INTEGER NOT NULL REFERENCES analytics_suggestions(id) ON DELETE CASCADE,
+    original_payload_json TEXT NOT NULL,
+    approved_payload_json TEXT,
+    approval_status TEXT NOT NULL CHECK (approval_status IN ('approved', 'rejected', 'edited')),
+    reviewer_note TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_analytics_feedback_suggestion_id
+    ON analytics_feedback(suggestion_id, id DESC);
+
+-- -----------------------------
+-- 15. Key node progress logs
+-- -----------------------------
+CREATE TABLE IF NOT EXISTS key_node_progress_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    key_node_id INTEGER NOT NULL REFERENCES key_nodes(id) ON DELETE CASCADE,
+    source_event_id INTEGER REFERENCES events(id) ON DELETE SET NULL,
+    progress_before REAL NOT NULL CHECK (progress_before BETWEEN 0 AND 1),
+    progress_after REAL NOT NULL CHECK (progress_after BETWEEN 0 AND 1),
+    progress_delta REAL NOT NULL CHECK (progress_delta BETWEEN -1 AND 1),
+    reason TEXT,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_key_node_progress_logs_key_node_id
+    ON key_node_progress_logs(key_node_id, id DESC);
+
+CREATE INDEX IF NOT EXISTS idx_key_node_progress_logs_source_event_id
+    ON key_node_progress_logs(source_event_id, id DESC);
+
 COMMIT;
